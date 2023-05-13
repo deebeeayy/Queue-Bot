@@ -41,11 +41,31 @@ import { ScheduleTable } from "./utilities/tables/ScheduleTable";
 import { Validator } from "./utilities/Validator";
 
 export class Commands {
+  /*
+    Notes on "func: (..._: any[]) => Promise<void>"
+    - func - the name of the incoming second variable of applyToQueue
+    - func: - because we use TS, we need to declare the type of the variable
+    - (..._: any[]) => Promise<void> - the type of our func variable
+    - ... - a rest operator (in this case), meaning this function expects any number of arguments
+    - _ - in typescript standard, used as the name of a variable we do not care about;
+      in our case, don't care about the variable because only being used to declare a type
+    - : any[] - the type of our any number of arguments for the function; we are going to
+      get any number of arguments whose types can all differ from each other; synonymous 
+      to declaring a variable as type Object[] in Java
+    - => Promise<void> - we expect the function in the func variable to return a Promise that
+      itself returns no value
+    Summary: Our func variable is a variable that holds an anonymous function or lambda which
+      can take a variable number of arguments of variable types. In other words, we do not know
+      how many or of which types of arguments we will get, just that we will get SOME function
+      that we will be running in this method. The function will always return to us a promise,
+      but the promise will never return a value of its own on completion or error.
+  */
+  
   /**
    * Apply function to specified queue, or all queues otherwise.
    * @param parsed The parsed input interaction.
-   * @param func The function that needs to be applied.
-   * @param values An array of ReplaceWith values that indicates queue object needed.
+   * @param func The function that needs to be applied. Should 
+   * @param values An array of ReplaceWith values that indicate the queue object on which the function is applied.
    * @param printName The name of a queue field (TODO)
    * @param printValue The value of a queue field (TODO)
    * @private
@@ -57,7 +77,12 @@ export class Commands {
     printName?: string,
     printValue?: string,
   ) {
+
+    // This array will contain the promises returned from our func variable.
     const dataPromises = [];
+
+    // This array will contain the promises from scheduling updates to the display once
+    // our function has been applied.
     const displayPromises = [];
 
     // For every channel in the channels array...
@@ -69,8 +94,29 @@ export class Commands {
         storedQueue = await QueueTable.get(queue.id);
       }
 
+      /*
+        Notes on the interactions of spread operators:
+        - There is a difference between using an array and SPREADING an array. For example,
+          console.log(values) is different from console.log(...values). The former returns
+          ["VALUE1", "VALUE2"], whereas the latter returns VALUE1 VALUE2. This indicates
+          that calling the log directly with the array prints out the values in their
+          array format, whereas calling the log with the spread out array applys the
+          log to each individual value of the array.
+        - When spread operators are placed in the body of a function, the function will be
+          applied to the individual spread arguments, not the entire array/object. For
+          example, let func = values => console.log(...values) will always apply the console.log
+          to the individual elements of the values array/object, assuming that values is
+          an array/object.
+      */
+
+      // Apply the function to the requested application value.
       dataPromises.push(
         func(
+          // Note: Spread operators have second lowest precendence in JS. The map happens first.
+          // Here, we are mapping every element of values to their individual fields (or, rather,
+          // the values of those fields). If an element cannot be mapped, it is simply returned.
+          // Once these values are mapped, they are then spread in the function and the function
+          // given is applied to each individual mapped value.
           ...values.map((val) => {
             switch (val) {
               case ReplaceWith.QUEUE_CHANNEL_ID:
@@ -82,15 +128,18 @@ export class Commands {
               default:
                 return val;
             }
-          }),
-        ),
+          })
+        )
       );
 
       displayPromises.push(SchedulingUtils.scheduleDisplayUpdate(parsed.storedGuild, queue));
     }
 
+    // Wait for all the data and display changes to happen.
     await Promise.all(dataPromises);
     await Promise.all(displayPromises);
+
+    // If a display name for the changed value was given, output the changes in the response.
     if (printName) {
       let response: string;
       if (parsed.args.channels) {
