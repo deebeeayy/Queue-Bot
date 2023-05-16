@@ -154,7 +154,8 @@ export class Commands {
   // --------------------------------- AUTOPULL ------------------------------- //
 
   /**
-   * the current autopull settings
+   * Retrieve the current auto-pull settings.
+   * @param parsed The parsed interaction with the bot.
    */
   public static async autopullGet(parsed: Parsed) {
     await parsed.parseArgs({ command: "autopull get" });

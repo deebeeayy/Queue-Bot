@@ -119,37 +119,55 @@ export class Parsed {
     this.request = command;
   }
 
+  /**
+   * This function takes the this parsed interaction and retrieves the input command
+   * and all of its arguments in the form of a string array. 
+   * @param conf The values that are required in the command for this call.
+   * @returns A promise containing the parsed command and input arguments.
+   */
   public async parseArgs(conf: RequiredOptions): Promise<string[]> {
+    // In JavaScript-isms, if (instance) indicates "if an object is null or undefined"
     this.command = conf.command;
-    // Strings
+
+    // Strings, always required
     this.args.strings = this.findArgs(this.request.options.data, "STRING") as string[];
-    // Numbers
+    
+    // Numbers, only when included as required
     if (conf.numbers) {
       this.args.numbers = this.findArgs(this.request.options.data, "INTEGER") as number[];
     }
+
     // Booleans
     if (conf.booleans) {
       this.args.booleans = this.findArgs(this.request.options.data, "BOOLEAN") as boolean[];
     }
-    // Members
+
+    // Guild (Server) Members
     if (conf.members) {
       this.args.members = new Collection<Snowflake, GuildMember>();
       const members = this.findArgs(this.request.options.data, "USER") as GuildMember[];
       members.forEach((member) => {
+        // Place the ID and member object from the arguments in the parsed arguments.
         if (member) this.args.members.set(member.id, member);
       });
     }
-    // Roles
+
+    // Guild Roles
     if (conf.roles) {
       this.args.roles = new Collection<Snowflake, Role>();
       const roles = this.findArgs(this.request.options.data, "ROLE") as Role[];
       roles.forEach((role) => {
+        // Please the ID and role object from the arguments in the parsed arguments.
         if (role) this.args.roles.set(role.id, role);
       });
     }
-    // Channels
+
+    // Guild Channels
     if (conf.channel) {
       let channel = this.findArgs(this.request.options.data, "CHANNEL")[0] as GuildBasedChannel;
+
+      // We only want to place the channel in the parsed arguments if the channel is of
+      // a type that we are able to use as a queue.
       // @ts-ignore
       if (channel && QUEUABLE_CHANNELS.includes(channel.type)) {
         this.args.channels = [channel];
