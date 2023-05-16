@@ -88,7 +88,7 @@ interface RequiredOptions {
     required?: RequiredType;
     min: number;
     max: number;
-    defaultValue: number;
+    defaultValue?: number;
   };
   booleans?: RequiredType;
 }
@@ -176,7 +176,8 @@ export class Parsed {
         }
       }
     }
-    // Verify
+
+    // Return any missing arguments to the calling function.
     return this.verifyArgs(conf);
   }
 
@@ -283,6 +284,7 @@ export class Parsed {
     }
     if (conf.numbers?.required === RequiredType.REQUIRED) {
       if (this.args.numbers.length) {
+        // TODO: Need to account for an undefined defaultValue.
         this.verifyNumber(conf.numbers.min, conf.numbers.max, conf.numbers.defaultValue);
       } else {
         missingArgs.push("number");
@@ -294,13 +296,16 @@ export class Parsed {
     if (conf.booleans === RequiredType.REQUIRED && !this.args.booleans.length) {
       missingArgs.push("boolean");
     }
-    // Report missing
+
+    // 0 == true - If there exist missing arguments, reply with an object containing the error message.
     if (missingArgs.length) {
       await this.reply({
         content: "**ERROR**: Missing " + missingArgs.join(" and ") + " argument" + (missingArgs.length > 1 ? "s." : "."),
         commandDisplay: "EPHEMERAL",
       }).catch(() => null);
     }
+
+    // Return the missing arguments to the caller function.
     return missingArgs;
   }
 

@@ -42,12 +42,12 @@ import { Validator } from "./utilities/Validator";
 
 export class Commands {
   /**
-   * Apply function to 1 queue if specified, otherwise apply to all queues
-   * @param parsed
-   * @param func - function to apply
-   * @param values - array of values, ReplaceWith get replaced with queue objects
-   * @param printName
-   * @param printValue
+   * Apply function to specified queue, or all queues otherwise.
+   * @param parsed The parsed input interaction.
+   * @param func The function that needs to be applied.
+   * @param values An array of ReplaceWith values that indicates queue object needed.
+   * @param printName The name of a queue field (TODO)
+   * @param printValue The value of a queue field (TODO)
    * @private
    */
   private static async applyToQueue(
@@ -59,11 +59,16 @@ export class Commands {
   ) {
     const dataPromises = [];
     const displayPromises = [];
+
+    // For every channel in the channels array...
     for (const queue of parsed.args.channels) {
       let storedQueue: StoredQueue;
+
+      // Obtain the stored queue from the queues table if requested.
       if (values.includes(ReplaceWith.STORED_QUEUE)) {
         storedQueue = await QueueTable.get(queue.id);
       }
+
       dataPromises.push(
         func(
           ...values.map((val) => {
@@ -80,8 +85,10 @@ export class Commands {
           }),
         ),
       );
+
       displayPromises.push(SchedulingUtils.scheduleDisplayUpdate(parsed.storedGuild, queue));
     }
+
     await Promise.all(dataPromises);
     await Promise.all(displayPromises);
     if (printName) {
@@ -1418,22 +1425,28 @@ export class Commands {
    * Pull user(s) from a queue and display their name(s)
    */
   public static async next(parsed: Parsed) {
-    if (
-      (
-        await parsed.parseArgs({
-          command: "next",
-          channel: {
-            required: RequiredType.REQUIRED,
-          },
-          numbers: { required: RequiredType.OPTIONAL, min: 1, max: 999, defaultValue: null },
-        })
-      ).length
-    ) {
+    let verificationObject = {
+      command: "next",
+      channel: {
+        required: RequiredType.REQUIRED
+      },
+      numbers: { 
+        required: RequiredType.OPTIONAL, 
+        min: 1, 
+        max: 999
+      }
+    };
+
+    // Parse args will return any missing arguments in an array. If there are none, then
+    // we can continue processing the code.
+    if ((await parsed.parseArgs(verificationObject)).length) {
       return;
     }
 
     const queueChannel = parsed.channel;
     const storedQueue = await QueueTable.get(queueChannel.id);
+    
+    // If a stored queue does not exist for the queue channel given, we cannot continue.
     if (!storedQueue) {
       await parsed
         .reply({
@@ -1443,6 +1456,8 @@ export class Commands {
         .catch(() => null);
       return;
     }
+
+    // Otherwise, pull based off the given arguments.
     await this.pullHelper({ stored: storedQueue, channel: queueChannel }, parsed);
   }
 
