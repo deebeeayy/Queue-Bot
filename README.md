@@ -131,3 +131,6 @@ To clean up the docker-composed postgres instance open a terminal instance to th
 ```  
 docker-compose down  
 ```  
+
+### Libraries
+- Knex - SQL Query Library

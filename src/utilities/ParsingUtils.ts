@@ -171,12 +171,22 @@ export class Parsed {
       // @ts-ignore
       if (channel && QUEUABLE_CHANNELS.includes(channel.type)) {
         this.args.channels = [channel];
-      } else {
+      } 
+      
+      // A channel was not included in our request data -- need to look for it from our
+      // existing server channel list.
+      else {
+        // Obtain the channels for this server acting as queues.
         let channels = await this.getQueueChannels();
+
+        // If the type of the channel is defined in the required arguments, filter the retrieved 
+        // channels so only those that match the defined types are included.
         if (conf.channel.type) {
           // @ts-ignore
           channels = channels.filter((ch) => conf.channel.type.includes(ch.type));
         }
+
+        // Find the channel requested in the arguments within the filtered channel list.
         if (channels.length === 1) {
           this.args.channels = channels;
         } else {
@@ -195,7 +205,7 @@ export class Parsed {
       }
     }
 
-    // Return any missing arguments to the calling function.
+    // Verify the interaction's required arguments are all included and return and missing ones.
     return this.verifyArgs(conf);
   }
 
@@ -283,8 +293,17 @@ export class Parsed {
     this.hasPermission = await ParsingUtils.checkPermission(this.request);
   }
 
+  /**
+   * This function validates that all arguments that were required for this interaction
+   * were input for this interaction. 
+   * @param conf The configured required values for this interaction.
+   * @returns A promise containing the list of arguments that were missing 
+   * based off the options in the input configuration.
+   */
   protected async verifyArgs(conf: RequiredOptions): Promise<string[]> {
     const missingArgs = [];
+
+    // Channels
     if (conf.channel?.required && !this.args.channels) {
       missingArgs.push(
         // @ts-ignore
@@ -294,12 +313,18 @@ export class Parsed {
           "channel",
       );
     }
+
+    // Roles
     if (conf.roles === RequiredType.REQUIRED && !this.args.roles) {
       missingArgs.push("role");
     }
+
+    // Members
     if (conf.members === RequiredType.REQUIRED && !this.args.members?.size) {
       missingArgs.push("member");
     }
+
+    // Numbers
     if (conf.numbers?.required === RequiredType.REQUIRED) {
       if (this.args.numbers.length) {
         // TODO: Need to account for an undefined defaultValue.
@@ -308,9 +333,13 @@ export class Parsed {
         missingArgs.push("number");
       }
     }
+
+    // Strings
     if (conf.strings === RequiredType.REQUIRED && !this.args.strings.length) {
       missingArgs.push("string");
     }
+
+    // Booleans
     if (conf.booleans === RequiredType.REQUIRED && !this.args.booleans.length) {
       missingArgs.push("boolean");
     }
@@ -337,6 +366,11 @@ export class Parsed {
     return this.cachedQueues;
   }
 
+  /**
+   * Function that obtains a list of channels acting as queue channels.
+   * The obtained promise is forwarded to the caller function.
+   * @returns A promise containing a list of channels that act as queues.
+   */
   public async getQueueChannels(): Promise<GuildBasedChannel[]> {
     return (await this.getQueuePairs()).map((pair) => pair.channel);
   }

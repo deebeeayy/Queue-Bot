@@ -155,12 +155,16 @@ export class Commands {
 
   /**
    * Retrieve the current auto-pull settings.
-   * @param parsed The parsed interaction with the bot.
+   * @param parsed The parsed version of the current interaction.
    */
   public static async autopullGet(parsed: Parsed) {
+    // Parse the command and arguments received in the interaction.
     await parsed.parseArgs({ command: "autopull get" });
 
     let response = "**Autopull**:\n";
+
+    // Loop through the queues from the queue-channel pairings and place the
+    // current auto-pull setting for the queue into the response.
     for await (const queue of await parsed.getQueuePairs()) {
       // @ts-ignore
       if (QUEUABLE_VOICE_CHANNELS.includes(queue.channel?.type)) {
@@ -169,13 +173,18 @@ export class Commands {
         response += `${queue.channel}: no autopull for text queue\n`;
       }
     }
+
+    // Send the response back to the user.
     await parsed.reply({ content: response }).catch(() => null);
   }
 
   /**
-   * Toggle automatic pull of users from a queue
+   * This function sets the auto-pull settings for a queue.
+   * @param parsed The parsed version of the current interaction.s
+   * @returns No value.
    */
   public static async autopullSet(parsed: Parsed) {
+    // If the input command and arguments are not valid, do not run logic.
     if (
       (
         await parsed.parseArgs({
@@ -191,6 +200,7 @@ export class Commands {
       return;
     }
 
+    // TODO: Apply the set auto-pull function on the queue table...
     await this.applyToQueue(parsed, QueueTable.setAutopull, [ReplaceWith.QUEUE_CHANNEL_ID, parsed.string === "on"], "autopull");
   }
 

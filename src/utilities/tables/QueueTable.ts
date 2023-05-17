@@ -39,6 +39,11 @@ export class QueueTable {
     });
   }
 
+  /**
+   * This function calls 
+   * @param queueChannelId The channel identifier of the queue channel we are retrieving.
+   * @returns The queue channel associated with the given channel identifier.
+   */
   public static get(queueChannelId: Snowflake) {
     return Base.knex<StoredQueue>("queue_channels").where("queue_channel_id", queueChannelId).first();
   }
@@ -84,6 +89,12 @@ export class QueueTable {
     await QueueTable.get(queueChannelId).update("grace_period", value);
   }
 
+  /**
+   * This function sets the auto-pull value of the given queue in the
+   * stored queue channel table.
+   * @param queueChannelId The channel identifier of the channel acting as a queue.
+   * @param value The value to set as the auto-pull value for this queue.
+   */
   public static async setAutopull(queueChannelId: Snowflake, value: boolean) {
     await QueueTable.get(queueChannelId).update("auto_fill", value ? 1 : 0);
   }

@@ -7,19 +7,53 @@ import _ from "lodash";
 import { ConfigJson, Timezone } from "./Interfaces";
 import { MessageCollection } from "./MessageCollection";
 
+/**
+ * TODO
+ */
 export class Base {
+  /**
+   * The bot configuration for this instance.
+   */
   static readonly config = this.getJSON("../config/config.json") as ConfigJson;
+  
+  /**
+   * The runnable commands for this instance.
+   */
   static readonly commands = this.getJSON("../config/commands-config.json") as ApplicationOptions[];
+
+  /**
+   * The version of the commands that was last active for the bot when it was running.
+   */
   static readonly lastCommands = (this.getJSON("../data/last-commands-config.json") || []) as ApplicationOptions[];
+
+  /**
+   * The timezone configurations for this instance.
+   */
   static readonly timeZones = this.getJSON("../data/timezone-list.json") as Timezone[];
+
+  /**
+   * This function reads in and parses out JSON from the given file
+   * location.
+   * @param path The location of the JSON file that needs to be parsed in.
+   * @returns The parsed JSON from the file as an object.
+   */
   static getJSON(path: string): any {
     const str = readFileSync(path, { encoding: "utf8", flag: "as+" });
     return str ? JSON.parse(str) : undefined;
   }
+
+  /**
+   * Concatenated invitation URL after the client identifier has been retrieved 
+   * from the configuration.
+   */
   static readonly inviteURL =
     `https://discord.com/api/oauth2/authorize?client_id=` +
     Base.config.clientId +
     `&permissions=290475024&scope=applications.commands%20bot`;
+  
+  /**
+   * The Knex library database connection to our current database.
+   */
   static readonly knex = knex({
     client: Base.config.databaseType,
     connection: {
@@ -31,6 +65,12 @@ export class Base {
       bigNumberStrings: true,
     },
   });
+
+  /**
+   * This application is the client. We need to instantiate a new client
+   * with all the required information in order to interact with Discord and
+   * its API.
+   */
   static readonly client: Client = new Client({
     // makeCache: Options.cacheWithLimits({
     //     MessageManager: {
@@ -100,30 +140,52 @@ export class Base {
     shards: "auto",
   });
 
+  /**
+   * This function determines if the given user is the same user
+   * as is associated with the bot's identity.
+   * @param member The member whose identity we are checking.
+   * @returns Whether the given member is the same as the bot's identity.
+   */
   public static isMe(member: GuildMember): boolean {
-    return member?.id === member?.guild?.me?.id;
+    return member?.id === member?.guild?.me?.id; // TODO: This is deprecated, update.
   }
 
+  /**
+   * This function is used to determine if the commands available to the
+   * bot have changed since the last time that the bot was run.
+   * @returns Whether the bot's commands have changed since its last run.
+   */
   public static haveCommandsChanged(): boolean {
     return !_.isEqual(this.commands, this.lastCommands);
   }
 
+  /**
+   * This function archives the current existing commands into an archival file
+   * used to track and changes to the available commands between this run and the next.
+   */
   public static archiveCommands(): void {
     writeFileSync("../data/last-commands-config.json", readFileSync("../config/commands-config.json", { encoding: "utf8" }));
   }
 
+  /**
+   * This function takes in a numerical UTC offset and returns the timezone configuration
+   * for the timezone associated with that UTC offset.
+   * @param utcOffset The UTC offset of the timezone that we are retrieving.
+   * @returns The timezone configuration for the timezone associated with the UTC offset.
+   */
   public static getTimezone(utcOffset: number): Timezone {
     return this.timeZones.find((t) => t.offset === utcOffset);
   }
 
   /**
-   * Shuffle array using the Fisher-Yates algorithm
+   * This function shuffles a given array using the Fisher-Yates algorithm.
+   * @param array The array that we would like to shuffle.
    */
   public static shuffle(array: Collection<Snowflake, Guild> | any[]): void {
     // @ts-ignore
     for (let i = (array.length || array.size) - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
+      [array[i], array[j]] = [array[j], array[i]]; // Error is because Collection is not numerical. TODO.
     }
   }
 }
