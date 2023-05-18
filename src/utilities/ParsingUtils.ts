@@ -344,7 +344,7 @@ export class Parsed {
       missingArgs.push("boolean");
     }
 
-    // 0 == true - If there exist missing arguments, reply with an object containing the error message.
+    // 0 == false: If there exist missing arguments, want to display an error.
     if (missingArgs.length) {
       await this.reply({
         content: "**ERROR**: Missing " + missingArgs.join(" and ") + " argument" + (missingArgs.length > 1 ? "s." : "."),

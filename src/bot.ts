@@ -610,31 +610,59 @@ async function processCommand(parsed: Parsed, command: CommandArg[]) {
   }
 }
 
+/**
+ * This function processes a change in the voice channel membership status of 
+ * a user and takes all appropriate actions to process that change, including
+ * adding or removing a user from a queue. This function also handles situations
+ * where the bot moves between queues, such as changing from the queue to the 
+ * pull channel (TODO)
+ * @param oldVoiceState Whether this user was previously in another voice channel and
+ * the voice channel they were in, if so.
+ * @param newVoiceState Whether this user is joining or leaving a voice channel and
+ * the channel on which they are taking their action.
+ * @returns No return.
+ */
 async function processVoice(oldVoiceState: VoiceState, newVoiceState: VoiceState) {
   try {
+    // Don't want to try to process messages if the bot isn't yet ready.
     if (!isReady) {
       return;
     }
+
     const oldVoiceChannel = oldVoiceState?.channel as VoiceChannel | StageChannel;
     const newVoiceChannel = newVoiceState?.channel as VoiceChannel | StageChannel;
 
+    // If the new voice state does not contain a member, use the information of
+    // the member from the old voice state.
     const member = newVoiceState.member || oldVoiceState.member;
-    // Ignore mutes and deafens
+    
+    // Ignore situations where the user remains in the same channel but is simply
+    // changing a setting or a moderator has changed a setting for them.
+    // Additionally, ignore requests where the member on which the actions are
+    // performed cannot be retrieved.
     if (oldVoiceChannel === newVoiceChannel || !member) {
       return;
     }
 
+    // Get the server associated with the guild identifier of the member in question.
     const storedGuild = await QueueGuildTable.get(member.guild.id);
+
+    // If an old or new channel were stored, retrieve those.
     const storedOldQueueChannel = oldVoiceChannel ? await QueueTable.get(oldVoiceChannel.id) : undefined;
     const storedNewQueueChannel = newVoiceChannel ? await QueueTable.get(newVoiceChannel.id) : undefined;
 
-    // Ignore when the bot moves between queues or when it starts and stops
+    // Ignore when the bot moves between queues or when it starts and stops.
+    // If the bot is the member in question, a start/stop is indicated when one of the two channels is non-existent.
     if (Base.isMe(member) && ((storedOldQueueChannel && storedNewQueueChannel) || !oldVoiceChannel || !newVoiceChannel)) {
       return;
     }
-    // Joined queue channel
+
+    // JOIN QUEUE //
+    // If the given new queue channel was found among the stored queues and the bot
+    // is not the member in question, add the member to the queue. 
     if (storedNewQueueChannel && !Base.isMe(member)) {
       try {
+        
         if (storedNewQueueChannel.target_channel_id) {
           const targetChannel = (await member.guild.channels.fetch(storedNewQueueChannel.target_channel_id).catch(() => null)) as
             | VoiceChannel
@@ -667,6 +695,7 @@ async function processVoice(oldVoiceState: VoiceState, newVoiceState: VoiceState
         // skip display update if failure
       }
     }
+
     // Left queue channel
     if (storedOldQueueChannel) {
       try {

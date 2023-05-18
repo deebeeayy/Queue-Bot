@@ -8,7 +8,9 @@ import { ConfigJson, Timezone } from "./Interfaces";
 import { MessageCollection } from "./MessageCollection";
 
 /**
- * TODO
+ * The base application class containing the necessary components to run the bot,
+ * including the client connection to Discord, the Knex database connection,
+ * and the bot configuration.
  */
 export class Base {
   /**
@@ -104,6 +106,8 @@ export class Base {
     //   },
     // },
 
+    // This lambda sets a function to modify the caching behavior of the bot.
+    // The given lambda sets a maximum size of the message manager's collection.
     makeCache: (manager) => {
       if (manager.name === "MessageManager") {
         return new MessageCollection({ maxSize: 5 });
@@ -130,6 +134,7 @@ export class Base {
     presence: {
       activities: [
         {
+          // Sets the bot to listen for the help command (?)
           type: "LISTENING",
           name: "/help",
         },

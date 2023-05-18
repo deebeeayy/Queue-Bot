@@ -20,18 +20,69 @@ export class QueueTable {
       if (!exists) {
         await Base.knex.schema
           .createTable("queue_channels", (table) => {
+            /**
+             * The identifier of this queue.
+             */
             table.bigInteger("queue_channel_id").primary();
+
+            /**
+             * Whether auto-pull from a queue (voice? TODO) is activated.
+             */
             table.integer("auto_fill");
+
+            /**
+             * The color of the queue display.
+             */
             table.text("color");
+
+            /**
+             * Whether to allow pulling when there are less users in the queue than the default pull count.
+             */
             table.boolean("enable_partial_pull");
+
+            /**
+             * The length of time in which users can leave a queue before losing their position. TODO 
+             */
             table.integer("grace_period");
+
+            /**
+             * The guild identifier of the Discord server containing this queue.
+             */
             table.bigInteger("guild_id");
+
+            /**
+             * The header displayed with messages, if set.
+             */
             table.text("header");
+
+            /**
+             * Whether the join/leave queue button is shown in the GUI.
+             */
             table.boolean("hide_button");
+
+            /**
+             * Whether the queue is currently locked.
+             */
             table.boolean("is_locked");
+            
+            /**
+             * The size limit of the queue.
+             */
             table.integer("max_members");
+
+            /**
+             * The number of users that should be pulled from a queue by default.
+             */
             table.integer("pull_num");
+
+            /**
+             * The identifier of the channel where pulled users are sent in a voice queue (TODO)
+             */
             table.bigInteger("target_channel_id");
+
+            /**
+             * Whether to server mute members that are currently in the queue.
+             */
             table.boolean("mute");
           })
           .catch((e) => console.error(e));
@@ -40,7 +91,8 @@ export class QueueTable {
   }
 
   /**
-   * This function calls 
+   * This function calls the Knex library to obtain the queue channel
+   * that matches the given channel identifier from the database. 
    * @param queueChannelId The channel identifier of the queue channel we are retrieving.
    * @returns The queue channel associated with the given channel identifier.
    */
@@ -48,14 +100,35 @@ export class QueueTable {
     return Base.knex<StoredQueue>("queue_channels").where("queue_channel_id", queueChannelId).first();
   }
 
+  /**
+   * This function calls the Knex library to obtain the guild matching
+   * the given guild identifier from the database.
+   * @param guildId The guild (server) identifier of the server we are retrieving.
+   * @returns The guild associated with the given guild identifier.
+   */
   public static getFromGuild(guildId: Snowflake) {
     return Base.knex<StoredQueue>("queue_channels").where("guild_id", guildId);
   }
 
+  /**
+   * This function calls the Knex library to obtain the channel that contains
+   * the target channel associated with the identifier as its target channel
+   * from the database.
+   * @param targetChannelId The identifier of the target channel that needs to be defined in the returned channel.
+   * @returns The channel defining the target identifier as its target channel.
+   */
   public static getFromTarget(targetChannelId: Snowflake) {
     return Base.knex<StoredQueue>("queue_channels").where("target_channel_id", targetChannelId);
   }
 
+  /**
+   * This function calls the Knex library to update the message that should be shown
+   * as the header on messages from the queue associated with the given channel
+   * identifier on the database.
+   * @param queueChannelId The identifier of the channel on which we are setting the header.
+   * @param message The message that should be shown in the header of messages sent from the
+   * queue associated with the channel of the identifier.
+   */
   public static async setHeader(queueChannelId: Snowflake, message: string) {
     await QueueTable.get(queueChannelId).update("header", message || null);
   }
