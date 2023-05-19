@@ -41,7 +41,7 @@ export class QueueTable {
             table.boolean("enable_partial_pull");
 
             /**
-             * The length of time in which users can leave a queue before losing their position. TODO 
+             * The length of time, in seconds, in which users can leave a queue before losing their position. 
              */
             table.integer("grace_period");
 
@@ -122,10 +122,9 @@ export class QueueTable {
   }
 
   /**
-   * This function calls the Knex library to update the message that should be shown
-   * as the header on messages from the queue associated with the given channel
-   * identifier on the database.
-   * @param queueChannelId The identifier of the channel on which we are setting the header.
+   * This function updates the message that should be shown as the header on messages
+   * from the queue associated with the given channel identifier.
+   * @param queueChannelId The identifier of the queue on which we are setting the header.
    * @param message The message that should be shown in the header of messages sent from the
    * queue associated with the channel of the identifier.
    */
@@ -133,49 +132,106 @@ export class QueueTable {
     await QueueTable.get(queueChannelId).update("header", message || null);
   }
 
+  /**
+   * This function updates whether the Join/Leave button should be shown in the 
+   * Discord user interface for the queue associated with the given channel identifier.
+   * @param queueChannelId The identifier of the queue on which we are changing the setting.
+   * @param hidden Whether the Join/Leave button should be shown in the Discord user interface.
+   */
   public static async setHideButton(queueChannelId: Snowflake, hidden: boolean) {
     await QueueTable.get(queueChannelId).update("hide_button", hidden);
   }
 
+  /**
+   * This function sets the lock status on the queue associated with the given channel identifier.
+   * @param queueChannelId The identifier of the queue on which we are changing the setting.
+   * @param is_locked Whether the queue is locked.
+   */
   public static async setLock(queueChannelId: Snowflake, is_locked: boolean) {
     await QueueTable.get(queueChannelId).update("is_locked", is_locked);
   }
 
+  /**
+   * This function sets the size limit of the queue associated with the given channel identifier. 
+   * @param queueChannelId The identifier of the queue on which we are changing the setting.
+   * @param max The size limit that should be set on the queue.
+   */
   public static async setMaxMembers(queueChannelId: Snowflake, max: number) {
     await QueueTable.get(queueChannelId).update("max_members", max);
   }
 
+  /**
+   * This function sets or updates the target channel for the queue associated with the 
+   * given channel identifier.
+   * @param queueChannelId The identifier of the queue on which we are changing the target channel.
+   * @param targetChannelId The identifier of the channel which we would like to use as the target
+   * channel for this queue.
+   */
   public static async setTarget(queueChannelId: Snowflake, targetChannelId: Snowflake | Knex.Raw) {
     await QueueTable.get(queueChannelId).update("target_channel_id", targetChannelId);
   }
 
+  /**
+   * This function sets or updates the display color for the queue associated with
+   * the given channel identifier.
+   * @param queueChannel The identifier of the queue whose display color we are changing.
+   * @param value The color value that we would like to set the queue to.
+   */
   public static async setColor(queueChannel: GuildBasedChannel, value: ColorResolvable) {
+    // TODO: Why get the queue twice -- once to update, once for the role?
     await QueueTable.get(queueChannel.id).update("color", value);
     const storedQueue = await QueueTable.get(queueChannel.id);
+    
+    // If the queue contains an associated role, set the color on the role as well? TODO
     if (storedQueue?.role_id) {
       const role = await queueChannel.guild.roles.fetch(storedQueue.role_id).catch(() => null as Role);
       await role?.setColor(value).catch(() => null);
     }
   }
 
+  /**
+   * This function sets or updates the period of time, in seconds, that can pass before a 
+   * user that has left the queue loses their position in the queue associated with the 
+   * given identifier.
+   * @param queueChannelId The identifier of the queue on which we are setting the grace period.
+   * @param value The amount of time, in seconds, that can pass before a user that has left the queue
+   * loses their position in the queue.
+   */
   public static async setGraceperiod(queueChannelId: Snowflake, value: number) {
     await QueueTable.get(queueChannelId).update("grace_period", value);
   }
 
   /**
-   * This function sets the auto-pull value of the given queue in the
-   * stored queue channel table.
-   * @param queueChannelId The channel identifier of the channel acting as a queue.
-   * @param value The value to set as the auto-pull value for this queue.
+   * This function sets whether auto-pulling should be enabled for the queue
+   * associated with the channel identifier.
+   * @param queueChannelId The identifier of the queue on which we are changing the setting.
+   * @param value Whether auto-pulling should be enabled for this queue.
    */
   public static async setAutopull(queueChannelId: Snowflake, value: boolean) {
     await QueueTable.get(queueChannelId).update("auto_fill", value ? 1 : 0);
   }
 
+  /**
+   * This function sets the number of people that should be pulled from the queue associated
+   * with the given identifier by default. It also allows for enabling and disabling
+   * whether pulling from the given queue is allowed when there are less people in the
+   * queue than the default pull amount.
+   * @param queueChannelId The identifier of the queue on which we are setting the pull count.
+   * @param number The number of people that should be pulled from a queue by default.
+   * @param enable_partial_pulling Whether pulling is allowed when there are less people in
+   * the queue than the default pull count.
+   */
   public static async setPullnum(queueChannelId: Snowflake, number: number, enable_partial_pulling: boolean) {
     await QueueTable.get(queueChannelId).update("pull_num", number).update("enable_partial_pull", enable_partial_pulling);
   }
 
+  /**
+   * This function updates the role identifier of the role associated with
+   * members of the queue when the queue role setting is enabled. If there are
+   * people in the queue, those queue members have their role updated as well.
+   * @param queueChannel The queue object on which we are updating the associated role.
+   * @param role The role which is to be associated to the queue and its members.
+   */
   public static async setRoleId(queueChannel: GuildBasedChannel, role: Role) {
     await QueueTable.get(queueChannel.id).update("role_id", role.id);
     const queueMembers = await QueueMemberTable.getFromQueueUnordered(queueChannel);
@@ -188,14 +244,34 @@ export class QueueTable {
     }
   }
 
+  /**
+   * This function updates whether people currently in the queue associated with the
+   * given identifier should be server muted.
+   * @param queueChannelId The identifier of the queue on which we are changing the setting.
+   * @param value Whether people currently in the queue should be server muted.
+   */
   public static async setMute(queueChannelId: Snowflake, value: boolean) {
     await QueueTable.get(queueChannelId).update("mute", value ? 1 : 0);
   }
 
+  /**
+   * This function removes a role association from the queue, stopping the role
+   * from being associated with members currently in the queue.
+   * @param queueChannel The queue from which we are removing the role association.
+   */
   public static async deleteRoleId(queueChannel: GuildBasedChannel) {
     await QueueTable.get(queueChannel.id).update("role_id", Base.knex.raw("DEFAULT"));
   }
 
+  /**
+   * This function retrieves a mapping of queue channel identifiers to their associated
+   * channels that are linked to the given Discord server. Additionally, it will perform
+   * cleanup on the queue channels associated with the server in the database to remove
+   * any that have been deleted.
+   * @param guild The Discord server from which we are retrieving the queue channels.
+   * @returns A mapping of channel identifiers to channels that belong to the given
+   * Discord server.
+   */
   public static async fetchFromGuild(guild: Guild): Promise<Collection<Snowflake, GuildBasedChannel>> {
     const queueChannelIdsToRemove: Snowflake[] = [];
     // Fetch stored channels
